@@ -1,0 +1,57 @@
+{
+  "name": "dtc-starter-monorepo",
+  "private": true,
+  "packageManager": "pnpm@10.11.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "start": "turbo start",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "security:check": "node --test scripts/security-regressions.test.mjs",
+    "backend:seed": "turbo seed --filter=@dtc/backend",
+    "backend:dev": "turbo dev --filter=@dtc/backend",
+    "storefront:dev": "turbo dev --filter=@dtc/storefront"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.0.5",
+      "@types/react-dom": "19.0.5",
+      "axios": "1.18.0",
+      "ajv@^8.0.0": "8.18.0",
+      "body-parser@^1.0.0": "1.20.6",
+      "brace-expansion@^1.0.0": "1.1.18",
+      "brace-expansion@^2.0.0": "2.1.4",
+      "brace-expansion@^5.0.0": "5.0.9",
+      "fast-xml-parser": "5.7.0",
+      "follow-redirects": "1.16.0",
+      "form-data": "4.0.6",
+      "immutable": "3.8.3",
+      "json-2-csv": "5.5.11",
+      "lodash": "4.18.1",
+      "morgan": "1.11.0",
+      "multer": "2.2.0",
+      "nanoid": "3.3.17",
+      "@opentelemetry/core@^2.0.0": "2.8.0",
+      "@opentelemetry/propagator-jaeger": "2.9.0",
+      "picomatch@^2.0.0": "2.3.2",
+      "picomatch@^4.0.0": "4.0.4",
+      "postcss": "8.5.23",
+      "protobufjs": "7.6.5",
+      "qs": "6.15.3",
+      "rollup": "4.59.0",
+      "uuid@^11.0.0": "11.1.1",
+      "yaml": "2.8.3"
+    }
+  },
+  "devDependencies": {
+    "@medusajs/eslint-plugin": "2.18.0",
+    "eslint": "^9.39.4",
+    "jiti": "^2.7.0",
+    "prettier": "^3.2.5",
+    "turbo": "^2.10.5"
+  }
+}
