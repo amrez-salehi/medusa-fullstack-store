@@ -5,7 +5,7 @@ import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
-import React, { useState } from "react"
+import React, { useRef, useState } from "react"
 import ErrorMessage from "../error-message"
 
 type PaymentButtonProps = {
@@ -36,6 +36,9 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
         />
       )
     case isManual(paymentSession?.provider_id):
+      if (process.env.NODE_ENV === "production") {
+        return <Button disabled>روش پرداخت پیکربندی نشده است</Button>
+      }
       return (
         <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
       )
@@ -55,15 +58,10 @@ const StripePaymentButton = ({
 }) => {
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const submitLock = useRef(false)
 
   const onPaymentCompleted = async () => {
     await placeOrder()
-      .catch((err) => {
-        setErrorMessage(err.message)
-      })
-      .finally(() => {
-        setSubmitting(false)
-      })
   }
 
   const stripe = useStripe()
@@ -77,59 +75,62 @@ const StripePaymentButton = ({
   const disabled = !stripe || !elements ? true : false
 
   const handlePayment = async () => {
+    if (submitLock.current) return
+    submitLock.current = true
     setSubmitting(true)
 
     if (!stripe || !elements || !card || !cart) {
       setSubmitting(false)
+      submitLock.current = false
       return
     }
 
-    await stripe
-      .confirmCardPayment(session?.data.client_secret as string, {
-        payment_method: {
-          card: card,
-          billing_details: {
-            name:
-              cart.billing_address?.first_name +
-              " " +
-              cart.billing_address?.last_name,
-            address: {
-              city: cart.billing_address?.city ?? undefined,
-              country: cart.billing_address?.country_code ?? undefined,
-              line1: cart.billing_address?.address_1 ?? undefined,
-              line2: cart.billing_address?.address_2 ?? undefined,
-              postal_code: cart.billing_address?.postal_code ?? undefined,
-              state: cart.billing_address?.province ?? undefined,
+    try {
+      const { error, paymentIntent } = await stripe.confirmCardPayment(
+        session?.data.client_secret as string,
+        {
+          payment_method: {
+            card: card,
+            billing_details: {
+              name:
+                cart.billing_address?.first_name +
+                " " +
+                cart.billing_address?.last_name,
+              address: {
+                city: cart.billing_address?.city ?? undefined,
+                country: cart.billing_address?.country_code ?? undefined,
+                line1: cart.billing_address?.address_1 ?? undefined,
+                line2: cart.billing_address?.address_2 ?? undefined,
+                postal_code: cart.billing_address?.postal_code ?? undefined,
+                state: cart.billing_address?.province ?? undefined,
+              },
+              email: cart.email,
+              phone: cart.billing_address?.phone ?? undefined,
             },
-            email: cart.email,
-            phone: cart.billing_address?.phone ?? undefined,
           },
-        },
-      })
-      .then(({ error, paymentIntent }) => {
-        if (error) {
-          const pi = error.payment_intent
-
-          if (
-            (pi && pi.status === "requires_capture") ||
-            (pi && pi.status === "succeeded")
-          ) {
-            onPaymentCompleted()
-          }
-
-          setErrorMessage(error.message || null)
-          return
         }
+      )
 
-        if (
-          (paymentIntent && paymentIntent.status === "requires_capture") ||
-          paymentIntent.status === "succeeded"
-        ) {
-          return onPaymentCompleted()
-        }
-
+      if (error) {
+        setErrorMessage(error.message || "پرداخت انجام نشد.")
         return
-      })
+      }
+
+      if (
+        paymentIntent &&
+        (paymentIntent.status === "requires_capture" || paymentIntent.status === "succeeded")
+      ) {
+        await onPaymentCompleted()
+        return
+      }
+
+      setErrorMessage("وضعیت پرداخت نامشخص است. لطفاً سفارش‌های خود را بررسی کنید.")
+    } catch {
+      setErrorMessage("ارتباط با درگاه پرداخت برقرار نشد. مبلغی دوباره کسر نمی‌شود؛ وضعیت سفارش را بررسی کنید.")
+    } finally {
+      submitLock.current = false
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -155,21 +156,24 @@ const StripePaymentButton = ({
 const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const submitLock = useRef(false)
 
   const onPaymentCompleted = async () => {
     await placeOrder()
-      .catch((err) => {
-        setErrorMessage(err.message)
-      })
-      .finally(() => {
-        setSubmitting(false)
-      })
   }
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
+    if (process.env.NODE_ENV === "production" || submitLock.current) return
+    submitLock.current = true
     setSubmitting(true)
-
-    onPaymentCompleted()
+    try {
+      await onPaymentCompleted()
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "ثبت سفارش انجام نشد.")
+    } finally {
+      submitLock.current = false
+      setSubmitting(false)
+    }
   }
 
   return (

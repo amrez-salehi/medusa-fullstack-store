@@ -9,7 +9,9 @@ import {
   getAuthHeaders,
   getCacheTag,
   getCartId,
+  getOrCreateCheckoutIdempotencyKey,
   removeCartId,
+  removeCheckoutIdempotencyKey,
   setCartId,
 } from "./cookies"
 import { getRegion } from "./regions"
@@ -269,65 +271,11 @@ export async function applyPromotions(codes: string[]) {
     ...(await getAuthHeaders()),
   }
 
-	const cart = await retrieveCart(cartId)
-	if (!cart) {
-		throw new Error("سبد خرید پیدا نشد")
-	}
-	if (!cart.customer_id) {
-		throw new Error("برای استفاده از کد تخفیف باید وارد حساب کاربری شوید")
-	}
-	const affiliateApi = (
-		process.env.AFFILIATE_API_URL || "http://localhost:8080/api/v1"
-	).replace(/\/$/, "")
-	const secret = process.env.INTEGRATION_SECRET
-	if (codes.length && !secret) {
-		throw new Error("اتصال کد تخفیف فروشگاه پیکربندی نشده است")
-	}
-
-	let affiliateCode = ""
-	for (const rawCode of codes) {
-		const response = await fetch(
-			`${affiliateApi}/integrations/medusa/discount-codes/validate`,
-			{
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-					"x-integration-secret": secret || "",
-				},
-				body: JSON.stringify({
-					discountCode: rawCode,
-					cartId,
-					customerId: cart.customer_id || cart.email || cart.id,
-					customerEmail: cart.email || "",
-					customerMobile: (cart as unknown as { customer?: { phone?: string | null } }).customer?.phone || "",
-					items: (cart.items || []).map((item) => ({
-						productId: item.product_id,
-						quantity: item.quantity,
-						unitPriceRial: item.unit_price,
-					})),
-				}),
-				cache: "no-store",
-				signal: AbortSignal.timeout(8000),
-			}
-		)
-		const payload = await response.json().catch(() => null)
-		if (!response.ok) {
-			throw new Error(
-				payload?.error?.message || payload?.message || "کد تخفیف معتبر نیست"
-			)
-		}
-		affiliateCode = payload?.data?.code || rawCode
-	}
-
 	return sdk.store.cart
 		.update(
 			cartId,
 			{
 				promo_codes: codes,
-				metadata: {
-					...(cart.metadata || {}),
-					affiliate_code: affiliateCode || null,
-				},
 			},
 			{},
 			headers
@@ -464,6 +412,7 @@ export async function placeOrder(cartId?: string) {
 
   const headers = {
     ...(await getAuthHeaders()),
+    "idempotency-key": await getOrCreateCheckoutIdempotencyKey(id),
   }
 
   const cartRes = await sdk.store.cart
@@ -482,7 +431,8 @@ export async function placeOrder(cartId?: string) {
     const orderCacheTag = await getCacheTag("orders")
     revalidateTag(orderCacheTag)
 
-    removeCartId()
+    await removeCartId()
+    await removeCheckoutIdempotencyKey()
     redirect(`/${countryCode}/order/${cartRes?.order.id}/confirmed`)
   }
 

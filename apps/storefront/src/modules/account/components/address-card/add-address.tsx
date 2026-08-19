@@ -2,7 +2,7 @@
 
 import { Plus } from "@medusajs/icons"
 import { Button, Heading, clx } from "@modules/common/components/ui"
-import { useActionState, useEffect, useState } from "react"
+import { useActionState, useCallback, useEffect, useState } from "react"
 
 import { addCustomerAddress } from "@lib/data/customer"
 import useToggleState from "@lib/hooks/use-toggle-state"
@@ -27,17 +27,16 @@ const AddAddress = ({
     error: null,
   } as { success: boolean; error: string | null })
 
-  const close = () => {
+  const close = useCallback(() => {
     setSuccessState(false)
     closeModal()
-  }
+  }, [closeModal])
 
   useEffect(() => {
     if (successState) {
       close()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [successState])
+  }, [close, successState])
 
   useEffect(() => {
     if (formState.success) {

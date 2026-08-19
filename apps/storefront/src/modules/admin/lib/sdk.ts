@@ -3,16 +3,8 @@
 import Medusa from "@medusajs/js-sdk"
 
 export const adminSdk = new Medusa({
-  baseUrl: process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000",
+  baseUrl: "/api/medusa",
   debug: process.env.NODE_ENV === "development",
-  // Limit persistence to the current browser tab. This reduces the exposure
-  // window compared with localStorage; an HttpOnly BFF session remains the
-  // preferred production design for privileged administration.
-  auth: {
-    type: "jwt",
-    jwtTokenStorageMethod: "session",
-    jwtTokenStorageKey: "armes_home_admin_token",
-  },
 })
 
 export type AdminProduct = {

@@ -18,9 +18,9 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
-    "@medusajs/icons": "2.18.0",
-    "@medusajs/js-sdk": "2.18.0",
-    "@medusajs/ui-preset": "2.18.0",
+    "@medusajs/icons": "2.19.0",
+    "@medusajs/js-sdk": "2.19.0",
+    "@medusajs/ui-preset": "2.19.0",
     "@radix-ui/react-accordion": "^1.2.3",
     "@stripe/react-stripe-js": "^5.3.0",
     "@stripe/stripe-js": "^8.2.0",
@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
-    "@medusajs/types": "2.18.0",
+    "@medusajs/types": "2.19.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.4",
@@ -57,6 +57,7 @@
     "prettier": "^2.8.8",
     "tailwindcss": "^3.0.23",
     "typescript": "^5.3.2",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "webpack": "5.104.1"
   }
 }

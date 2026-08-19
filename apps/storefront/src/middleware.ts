@@ -7,6 +7,43 @@ const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+function securityPolicy(nonce: string) {
+  const development = process.env.NODE_ENV === "development"
+  let backendOrigin = ""
+  try {
+    backendOrigin = new URL(BACKEND_URL || "").origin
+  } catch {}
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    `connect-src 'self' ${backendOrigin} https://api.stripe.com`.trim(),
+    "font-src 'self' data:",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "frame-src https://js.stripe.com https://hooks.stripe.com",
+    "img-src 'self' data: blob: https:",
+    "object-src 'none'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com${development ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "worker-src 'self' blob:",
+    ...(development ? [] : ["upgrade-insecure-requests"]),
+  ].join("; ")
+}
+
+function pageResponse(request: NextRequest, policy: string, nonce: string) {
+  const headers = new Headers(request.headers)
+  headers.set("x-nonce", nonce)
+  headers.set("Content-Security-Policy", policy)
+  const response = NextResponse.next({ request: { headers } })
+  response.headers.set("Content-Security-Policy", policy)
+  return response
+}
+
+function secured(response: NextResponse, policy: string) {
+  response.headers.set("Content-Security-Policy", policy)
+  return response
+}
+
 const regionMapCache = {
   regionMap: new Map<string, HttpTypes.StoreRegion>(),
   regionMapUpdated: Date.now(),
@@ -103,8 +140,14 @@ async function getCountryCode(
  * Middleware to handle region selection and onboarding status.
  */
 export async function middleware(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64")
+  const policy = securityPolicy(nonce)
+
   if (request.nextUrl.pathname.includes(".")) {
-    return NextResponse.next()
+    return pageResponse(request, policy, nonce)
+  }
+  if (request.nextUrl.pathname === "/admin" || request.nextUrl.pathname.startsWith("/admin/")) {
+    return pageResponse(request, policy, nonce)
   }
 
   const cacheIdCookie = request.cookies.get("_medusa_cache_id")
@@ -124,7 +167,7 @@ export async function middleware(request: NextRequest) {
 
   if (urlHasCountry) {
     if (!validCacheCookie) {
-      const response = NextResponse.next()
+      const response = pageResponse(request, policy, nonce)
       response.cookies.set("_medusa_cache_id", cacheId, {
         maxAge: 60 * 60 * 24,
         httpOnly: true,
@@ -134,7 +177,7 @@ export async function middleware(request: NextRequest) {
       })
       return response
     }
-    return NextResponse.next()
+    return pageResponse(request, policy, nonce)
   }
 
   // if the url doesn't have the country, redirect to it
@@ -143,11 +186,11 @@ export async function middleware(request: NextRequest) {
   const queryString = request.nextUrl.search || ""
   const redirectUrl = `${request.nextUrl.origin}/${country}${redirectPath}${queryString}`
 
-  return NextResponse.redirect(redirectUrl, 307)
+  return secured(NextResponse.redirect(redirectUrl, 307), policy)
 }
 
 export const config = {
   matcher: [
-    "/((?!admin|api|_next/static|_next/image|favicon.ico|images|assets|png|svg|jpg|jpeg|gif|webp).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|images|assets|png|svg|jpg|jpeg|gif|webp).*)",
   ],
 }

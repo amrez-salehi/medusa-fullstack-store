@@ -145,3 +145,53 @@ export const removeCartId = async () => {
     path: "/",
   })
 }
+
+type CheckoutIdempotency = {
+  cartId: string
+  key: string
+}
+
+const CHECKOUT_IDEMPOTENCY_COOKIE = "_medusa_checkout_idempotency"
+
+/**
+ * Keep one idempotency key per cart in an HttpOnly cookie. Reusing this key
+ * makes a browser retry (refresh, network retry, or a duplicate click) safe
+ * at Medusa's complete-cart endpoint.
+ */
+export const getOrCreateCheckoutIdempotencyKey = async (cartId: string) => {
+  const cookies = await nextCookies()
+  const stored = cookies.get(CHECKOUT_IDEMPOTENCY_COOKIE)?.value
+
+  if (stored) {
+    try {
+      const value = JSON.parse(stored) as CheckoutIdempotency
+      if (value.cartId === cartId && typeof value.key === "string" && value.key.length >= 16) {
+        return value.key
+      }
+    } catch {
+      // A malformed client cookie is replaced with a new opaque key.
+    }
+  }
+
+  const key = crypto.randomUUID()
+  const value: CheckoutIdempotency = { cartId, key }
+  cookies.set(CHECKOUT_IDEMPOTENCY_COOKIE, JSON.stringify(value), {
+    maxAge: 60 * 60,
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  })
+  return key
+}
+
+export const removeCheckoutIdempotencyKey = async () => {
+  const cookies = await nextCookies()
+  cookies.set(CHECKOUT_IDEMPOTENCY_COOKIE, "", {
+    maxAge: -1,
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  })
+}

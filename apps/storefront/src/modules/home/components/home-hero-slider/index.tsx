@@ -71,7 +71,7 @@ export default function HomeHeroSlider() {
           مشاهده مجموعه
         </LocalizedClientLink>
         <h1 id="home-hero-title" className="home-minimal-brand" aria-label="Harmen Decor">
-          <img src="/brand/harmendecor-mark.png" alt="" />
+          <Image src="/brand/harmendecor-mark.png" alt="" width={48} height={48} />
           <span>
             <strong>HARMEN</strong>
             <small>DECOR</small>

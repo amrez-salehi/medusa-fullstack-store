@@ -13,7 +13,7 @@ import MapPin from "@modules/common/icons/map-pin"
 import Modal from "@modules/common/components/modal"
 import { Button, Heading, Text, clx } from "@modules/common/components/ui"
 import Spinner from "@modules/common/icons/spinner"
-import React, { useActionState, useEffect, useState } from "react"
+import React, { useActionState, useCallback, useEffect, useState } from "react"
 
 type EditAddressProps = {
   region: HttpTypes.StoreRegion
@@ -35,17 +35,16 @@ const EditAddress: React.FC<EditAddressProps> = ({
     error: null,
   } as { success: boolean; error: string | null })
 
-  const close = () => {
+  const close = useCallback(() => {
     setSuccessState(false)
     closeModal()
-  }
+  }, [closeModal])
 
   useEffect(() => {
     if (successState) {
       close()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [successState])
+  }, [close, successState])
 
   useEffect(() => {
     if (formState.success) {

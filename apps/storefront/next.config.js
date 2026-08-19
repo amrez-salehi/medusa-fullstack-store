@@ -10,10 +10,6 @@ const S3_HOSTNAME = process.env.MEDUSA_CLOUD_S3_HOSTNAME
 const S3_PATHNAME = process.env.MEDUSA_CLOUD_S3_PATHNAME
 
 const securityHeaders = [
-  {
-    key: "Content-Security-Policy",
-    value: "object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
-  },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -43,6 +39,7 @@ const privateResponseHeaders = [
  * @type {import('next').NextConfig}
  */
 const nextConfig = {
+  output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingRoot: path.join(__dirname, "../.."),
@@ -82,7 +79,6 @@ const nextConfig = {
     ]
   },
   images: {
-    unoptimized: true,
     qualities: [72, 76, 80, 85, 90],
     remotePatterns: [
       {

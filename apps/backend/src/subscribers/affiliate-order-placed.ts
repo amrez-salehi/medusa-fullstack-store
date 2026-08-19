@@ -6,6 +6,7 @@ export default async function affiliateOrderPlaced({
   container,
 }: SubscriberArgs<{ id: string }>) {
   const order = await buildOrderPayload(container, data.id)
+  if (!order.promotionCode) return
   await postAffiliateEvent({
     eventId: `order.placed:${data.id}`,
     type: "order.placed",
@@ -13,4 +14,7 @@ export default async function affiliateOrderPlaced({
   })
 }
 
-export const config: SubscriberConfig = { event: "order.placed" }
+export const config: SubscriberConfig = {
+  event: "order.placed",
+  context: { subscriberId: "affiliate-order-placed-v1" },
+}

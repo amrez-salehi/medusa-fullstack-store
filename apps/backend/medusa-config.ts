@@ -84,11 +84,66 @@ assertProductionRequired("REDIS_URL")
 assertProductionRequired("BACKEND_URL")
 assertProductionRequired("AFFILIATE_API_URL")
 assertProductionRequired("INTEGRATION_SECRET", 32)
+assertProductionRequired("PAYMENT_PROVIDER_ID")
+assertProductionRequired("S3_FILE_URL")
+assertProductionRequired("S3_REGION")
+assertProductionRequired("S3_BUCKET")
 assertProductionHttpsUrl("BACKEND_URL")
 assertProductionHttpsUrl("AFFILIATE_API_URL")
+assertProductionHttpsUrl("S3_FILE_URL")
 assertProductionHttpsOrigins("STORE_CORS")
 assertProductionHttpsOrigins("ADMIN_CORS")
 assertProductionHttpsOrigins("AUTH_CORS")
+
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.PAYMENT_PROVIDER_ID === "pp_system_default"
+) {
+  throw new MedusaError(
+    MedusaError.Types.INVALID_DATA,
+    "The manual system payment provider cannot be used in production"
+  )
+}
+
+const s3AuthenticationMethod = process.env.S3_AUTHENTICATION_METHOD === "s3-iam-role"
+  ? "s3-iam-role"
+  : "access-key"
+
+if (process.env.NODE_ENV === "production" && s3AuthenticationMethod === "access-key") {
+  assertProductionRequired("S3_ACCESS_KEY_ID")
+  assertProductionRequired("S3_SECRET_ACCESS_KEY")
+}
+
+const fileProviders = process.env.NODE_ENV === "production"
+  ? [
+      {
+        resolve: "@medusajs/file-s3",
+        id: "s3",
+        options: {
+          fileUrl: process.env.S3_FILE_URL,
+          region: process.env.S3_REGION,
+          bucket: process.env.S3_BUCKET,
+          endpoint: process.env.S3_ENDPOINT,
+          prefix: process.env.S3_PREFIX,
+          authenticationMethod: s3AuthenticationMethod,
+          accessKeyId: process.env.S3_ACCESS_KEY_ID,
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+          // Public delivery should be configured at the bucket/CDN layer.
+          // Omitting object ACLs supports BucketOwnerEnforced and Block Public Access.
+          acl: false,
+        },
+      },
+    ]
+  : [
+      {
+        resolve: "@medusajs/file-local",
+        id: "local",
+        options: {
+          upload_dir: "static/uploads",
+          backend_url: process.env.BACKEND_URL || "http://localhost:9000/static/uploads",
+        },
+      },
+    ]
 
 module.exports = defineConfig({
   admin: {
@@ -111,6 +166,12 @@ module.exports = defineConfig({
       resolve: "@medusajs/medusa/event-bus-redis",
       options: {
         redisUrl: process.env.REDIS_URL,
+        jobOptions: {
+          attempts: 10,
+          backoff: { type: "exponential", delay: 1000 },
+          removeOnComplete: { age: 24 * 60 * 60, count: 10000 },
+          removeOnFail: { age: 7 * 24 * 60 * 60, count: 50000 },
+        },
       },
     },
     {
@@ -134,16 +195,7 @@ module.exports = defineConfig({
     {
       resolve: "@medusajs/file",
       options: {
-        providers: [
-          {
-            resolve: "@medusajs/file-local",
-            id: "local",
-            options: {
-              upload_dir: "static/uploads",
-              backend_url: process.env.BACKEND_URL || "http://localhost:9000/static/uploads",
-            },
-          },
-        ],
+        providers: fileProviders,
       },
     },
   ],

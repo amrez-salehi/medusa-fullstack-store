@@ -45,9 +45,13 @@ const Item = ({ item, type = "full", currencyCode, locale }: ItemProps) => {
       })
   }
 
-  // TODO: Update this to grab the actual max inventory
-  const maxQtyFromInventory = 10
-  const maxQuantity = item.variant?.manage_inventory ? 10 : maxQtyFromInventory
+  // This is presentation-only; Medusa still validates inventory server-side.
+  // Do not present an arbitrary client-side limit as available stock.
+  const inventoryQuantity = Math.max(0, item.variant?.inventory_quantity ?? 0)
+  const maxQuantity =
+    item.variant?.manage_inventory && !item.variant.allow_backorder
+      ? inventoryQuantity
+      : 10
 
   if (type === "full") {
     return (

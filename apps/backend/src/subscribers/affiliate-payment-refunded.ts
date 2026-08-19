@@ -5,7 +5,8 @@ export default async function affiliatePaymentRefunded({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
-  const payment = await buildPaymentPayload(container, data.id)
+  const { payment, shouldNotify } = await buildPaymentPayload(container, data.id)
+  if (!shouldNotify) return
   await postAffiliateEvent({
     eventId: `payment.refunded:${data.id}:${payment.refundedAmount}`,
     type: "payment.refunded",
@@ -13,4 +14,7 @@ export default async function affiliatePaymentRefunded({
   })
 }
 
-export const config: SubscriberConfig = { event: "payment.refunded" }
+export const config: SubscriberConfig = {
+  event: "payment.refunded",
+  context: { subscriberId: "affiliate-payment-refunded-v1" },
+}

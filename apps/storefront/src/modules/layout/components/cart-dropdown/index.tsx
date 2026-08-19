@@ -16,7 +16,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import Thumbnail from "@modules/products/components/thumbnail"
 import { usePathname } from "next/navigation"
 import { getPersianProductCopy } from "@lib/i18n/product-copy"
-import { Fragment, useEffect, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useRef, useState } from "react"
 
 const CartDropdown = ({
   cart: cartState,
@@ -47,13 +47,11 @@ const CartDropdown = ({
         empty: "Your shopping bag is empty.",
         explore: "Explore products",
       }
-  const [activeTimer, setActiveTimer] = useState<
-    ReturnType<typeof setTimeout> | undefined
-  >(undefined)
+  const activeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [cartDropdownOpen, setCartDropdownOpen] = useState(false)
 
-  const open = () => setCartDropdownOpen(true)
-  const close = () => setCartDropdownOpen(false)
+  const open = useCallback(() => setCartDropdownOpen(true), [])
+  const close = useCallback(() => setCartDropdownOpen(false), [])
 
   const totalItems =
     cartState?.items?.reduce((acc, item) => {
@@ -63,17 +61,16 @@ const CartDropdown = ({
   const subtotal = cartState?.subtotal ?? 0
   const itemRef = useRef<number>(totalItems || 0)
 
-  const timedOpen = () => {
+  const timedOpen = useCallback(() => {
     open()
-
-    const timer = setTimeout(close, 5000)
-
-    setActiveTimer(timer)
-  }
+    if (activeTimer.current) clearTimeout(activeTimer.current)
+    activeTimer.current = setTimeout(close, 5000)
+  }, [close, open])
 
   const openAndCancel = () => {
-    if (activeTimer) {
-      clearTimeout(activeTimer)
+    if (activeTimer.current) {
+      clearTimeout(activeTimer.current)
+      activeTimer.current = undefined
     }
 
     open()
@@ -82,11 +79,11 @@ const CartDropdown = ({
   // Clean up the timer when the component unmounts
   useEffect(() => {
     return () => {
-      if (activeTimer) {
-        clearTimeout(activeTimer)
+      if (activeTimer.current) {
+        clearTimeout(activeTimer.current)
       }
     }
-  }, [activeTimer])
+  }, [])
 
   const pathname = usePathname()
 
@@ -95,8 +92,8 @@ const CartDropdown = ({
     if (itemRef.current !== totalItems && !pathname.includes("/cart")) {
       timedOpen()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalItems, itemRef.current])
+    itemRef.current = totalItems
+  }, [pathname, timedOpen, totalItems])
 
   return (
     <div

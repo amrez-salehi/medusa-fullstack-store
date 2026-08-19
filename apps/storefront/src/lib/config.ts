@@ -27,6 +27,10 @@ sdk.client.fetch = async <T>(
     headers["x-medusa-locale"] ??= localeHeader["x-medusa-locale"]
   } catch {}
 
+  // Keep a request identifier across the storefront, Medusa, and external
+  // integrations without logging credentials or personal data.
+  headers["x-request-id"] ??= crypto.randomUUID()
+
   const newHeaders = {
     ...localeHeader,
     ...headers,

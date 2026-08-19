@@ -17,12 +17,33 @@ import {
   setAuthToken,
   setPendingCustomer,
 } from "./cookies"
+import { headers } from "next/headers"
 
 export type CustomerAuthState =
   | { state: "error"; error: string }
   | { state: "verification_required"; email: string }
   | { state: "success" }
   | null
+
+type AuthenticationResult =
+  | { token: string; verification_required?: false }
+  | { token: string; verification_required: true; verification?: unknown }
+  | { location: string }
+  | { mfa_challenge: unknown }
+
+const forwardedAddressHeaders = async () => {
+  const requestHeaders = await headers()
+  const forwardedFor = requestHeaders.get("x-forwarded-for")
+  return forwardedFor ? { "x-forwarded-for": forwardedFor } : undefined
+}
+
+const authenticateCustomer = async (email: string, password: string) => {
+  return sdk.client.fetch<AuthenticationResult>("/auth/customer/emailpass", {
+    method: "POST",
+    body: { email, password },
+    headers: await forwardedAddressHeaders(),
+  })
+}
 
 // Requests a verification email for the given customer. The request must be
 // authenticated with a token tied to the auth identity (the token returned by
@@ -89,11 +110,22 @@ export async function signup(
     last_name: formData.get("last_name") as string,
     phone: formData.get("phone") as string,
   }
+  if (
+    typeof password !== "string" ||
+    Array.from(password).length < 12 ||
+    Buffer.byteLength(password, "utf8") > 72
+  ) {
+    return {
+      state: "error",
+      error: "رمز عبور باید حداقل ۱۲ کاراکتر و حداکثر ۷۲ بایت باشد.",
+    }
+  }
 
   try {
-    await sdk.auth.register("customer", "emailpass", {
-      email: customerForm.email,
-      password,
+    await sdk.client.fetch<{ token: string }>("/auth/customer/emailpass/register", {
+      method: "POST",
+      body: { email: customerForm.email, password },
+      headers: await forwardedAddressHeaders(),
     })
   } catch (error) {
     const fetchError = error as FetchError
@@ -135,17 +167,17 @@ async function completeLogin(
   email: string,
   password: string
 ): Promise<CustomerAuthState> {
-  let result: Awaited<ReturnType<typeof sdk.auth.login>>
+  let result: AuthenticationResult
 
   try {
-    result = await sdk.auth.login("customer", "emailpass", { email, password })
+    result = await authenticateCustomer(email, password)
   } catch (error) {
     return { state: "error", error: String(error) }
   }
 
   // A `location` is returned by third-party auth providers, which this flow
   // doesn't support.
-  if (typeof result === "object" && "location" in result) {
+  if ("location" in result) {
     return {
       state: "error",
       error: "This login method isn't supported by the storefront.",
@@ -155,7 +187,6 @@ async function completeLogin(
   // The backend requires email verification and the customer hasn't verified
   // yet. Send the verification email and ask them to check their inbox.
   if (
-    typeof result === "object" &&
     "verification_required" in result &&
     result.verification_required
   ) {
@@ -167,14 +198,14 @@ async function completeLogin(
     return { state: "verification_required", email }
   }
 
-  if (typeof result !== "string") {
+  if (!("token" in result) || "mfa_challenge" in result) {
     return {
       state: "error",
       error: "Authentication requires additional steps that aren't supported.",
     }
   }
 
-  let token = result
+  let token = result.token
 
   // The token may not be tied to a customer record yet — right after
   // registration, or after verifying a brand-new account. Ask the backend:
@@ -201,10 +232,11 @@ async function completeLogin(
         { authorization: `Bearer ${token}` }
       )
 
-      token = (await sdk.auth.login("customer", "emailpass", {
-        email,
-        password,
-      })) as string
+      const authenticated = await authenticateCustomer(email, password)
+      if (!("token" in authenticated)) {
+        throw new Error("Authentication requires unsupported additional steps")
+      }
+      token = authenticated.token
     } catch (error) {
       return { state: "error", error: String(error) }
     }
@@ -242,8 +274,6 @@ export async function confirmEmailVerification(
 }
 
 export async function signout(countryCode: string) {
-  await sdk.auth.logout()
-
   await removeAuthToken()
 
   const customerCacheTag = await getCacheTag("customers")
@@ -258,6 +288,41 @@ export async function signout(countryCode: string) {
     ? countryCode.toLowerCase()
     : "dk"
   redirect(`/${safeCountryCode}/account`)
+}
+
+export async function updatePassword(
+  _currentState: { success: boolean; error: string | null },
+  formData: FormData
+): Promise<{ success: boolean; error: string | null }> {
+  const oldPassword = String(formData.get("old_password") || "")
+  const newPassword = String(formData.get("new_password") || "")
+  const confirmPassword = String(formData.get("confirm_password") || "")
+  if (newPassword !== confirmPassword) {
+    return { success: false, error: "تکرار رمز عبور با رمز جدید یکسان نیست." }
+  }
+  if (newPassword.length < 12 || Buffer.byteLength(newPassword, "utf8") > 72) {
+    return { success: false, error: "رمز جدید باید بین ۱۲ کاراکتر و ۷۲ بایت باشد." }
+  }
+  const customer = await retrieveCustomer()
+  if (!customer?.email) {
+    return { success: false, error: "نشست کاربری معتبر نیست." }
+  }
+
+  try {
+    const authenticated = await authenticateCustomer(customer.email, oldPassword)
+    if (!("token" in authenticated)) {
+      return { success: false, error: "تأیید رمز فعلی نیازمند مرحله‌ای است که پشتیبانی نمی‌شود." }
+    }
+    await sdk.client.fetch("/auth/customer/emailpass/update", {
+      method: "POST",
+      body: { password: newPassword },
+      headers: { authorization: `Bearer ${authenticated.token}` },
+    })
+    await removeAuthToken()
+    return { success: true, error: null }
+  } catch {
+    return { success: false, error: "رمز فعلی نادرست است یا تغییر رمز انجام نشد." }
+  }
 }
 
 export async function transferCart() {

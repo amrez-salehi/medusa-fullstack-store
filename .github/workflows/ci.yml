@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level high
+      - run: pnpm security:check
+      - run: pnpm --filter backend test:unit
+      - run: pnpm --filter backend build
+      - run: pnpm --filter storefront test
+      - run: pnpm --filter storefront build
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --file apps/backend/Dockerfile --tag medusa-api:ci .
+      - run: >-
+          docker build
+          --file apps/storefront/Dockerfile
+          --build-arg NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_test_ci
+          --build-arg NEXT_PUBLIC_MEDUSA_BACKEND_URL=http://localhost:9000
+          --tag medusa-web:ci
+          .

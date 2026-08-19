@@ -5,7 +5,8 @@ export default async function affiliatePaymentCaptured({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
-  const payment = await buildPaymentPayload(container, data.id)
+  const { payment, shouldNotify } = await buildPaymentPayload(container, data.id)
+  if (!shouldNotify) return
   await postAffiliateEvent({
     eventId: `payment.captured:${data.id}:${payment.capturedAmount}`,
     type: "payment.captured",
@@ -13,4 +14,7 @@ export default async function affiliatePaymentCaptured({
   })
 }
 
-export const config: SubscriberConfig = { event: "payment.captured" }
+export const config: SubscriberConfig = {
+  event: "payment.captured",
+  context: { subscriberId: "affiliate-payment-captured-v1" },
+}

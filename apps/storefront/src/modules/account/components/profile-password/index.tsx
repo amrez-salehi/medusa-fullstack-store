@@ -4,6 +4,8 @@ import React from "react"
 import Input from "@modules/common/components/input"
 import AccountInfo from "../account-info"
 import { HttpTypes } from "@medusajs/types"
+import { useActionState } from "react"
+import { updatePassword } from "@lib/data/customer"
 // TODO: Re-add toast notifications when Toaster component is implemented
 
 type MyInformationProps = {
@@ -11,21 +13,15 @@ type MyInformationProps = {
 }
 
 const ProfilePassword: React.FC<MyInformationProps> = ({ customer: _customer }) => {
-  const [successState, setSuccessState] = React.useState(false)
-
-  // TODO: Add support for password updates
-  const updatePassword = async () => {
-    // TODO: Re-add toast notification when Toaster component is implemented
-    console.info("Password update is not implemented")
-  }
+  const [state, action] = useActionState(updatePassword, { success: false, error: null })
 
   const clearState = () => {
-    setSuccessState(false)
+    // State is replaced on the next submission; AccountInfo dismisses the message locally.
   }
 
   return (
     <form
-      action={updatePassword}
+      action={action}
       onReset={() => clearState()}
       className="w-full"
     >
@@ -34,9 +30,9 @@ const ProfilePassword: React.FC<MyInformationProps> = ({ customer: _customer }) 
         currentInfo={
           <span>رمز عبور به دلایل امنیتی نمایش داده نمی‌شود.</span>
         }
-        isSuccess={successState}
-        isError={false}
-        errorMessage={undefined}
+        isSuccess={state.success}
+        isError={Boolean(state.error)}
+        errorMessage={state.error || undefined}
         clearState={clearState}
         data-testid="account-password-editor"
       >
