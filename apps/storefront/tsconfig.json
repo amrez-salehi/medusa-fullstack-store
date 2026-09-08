@@ -32,6 +32,12 @@
     ".next",
     ".nyc_output",
     "coverage",
-    "jest-coverage"
+    "jest-coverage",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

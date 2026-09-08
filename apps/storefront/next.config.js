@@ -42,7 +42,17 @@ const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
-  outputFileTracingRoot: path.join(__dirname, "../.."),
+  outputFileTracingRoot: __dirname,
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@lib": path.resolve(__dirname, "src/lib"),
+      "@modules": path.resolve(__dirname, "src/modules"),
+      "@pages": path.resolve(__dirname, "src/pages"),
+    }
+
+    return config
+  },
   logging: {
     fetches: {
       // Full URLs can contain order identifiers and one-time tokens.

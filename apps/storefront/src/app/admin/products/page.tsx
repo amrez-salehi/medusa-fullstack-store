@@ -2,9 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import AdminShell from "@modules/admin/components/admin-shell"
-import AdminIcon from "@modules/admin/components/admin-icon"
-import { adminSdk, AdminProduct, toman } from "@modules/admin/lib/sdk"
+import AdminShell from "../../../modules/admin/components/admin-shell"
+import AdminIcon from "../../../modules/admin/components/admin-icon"
+import { adminSdk, AdminProduct, toman } from "../../../modules/admin/lib/sdk"
 
 type ProductForm = { title: string; handle: string; description: string; price: string; inventory: string; image: string; images: string[]; status: "published" | "draft" }
 const empty: ProductForm = { title: "", handle: "", description: "", price: "", inventory: "", image: "", images: [], status: "published" }

@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
-import AdminShell from "@modules/admin/components/admin-shell"
+import AdminShell from "../../../modules/admin/components/admin-shell"
 type Customer = { id: string; first_name?: string; last_name?: string; email?: string; phone?: string; created_at?: string }
-import { adminSdk } from "@modules/admin/lib/sdk"
+import { adminSdk } from "../../../modules/admin/lib/sdk"
 export default function AdminCustomers() { const [customers, setCustomers] = useState<Customer[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); useEffect(() => { adminSdk.admin.customer.list({ limit: 100, offset: 0 }).then((d) => setCustomers((d.customers || []) as Customer[])).catch(() => setError("دریافت مشتریان انجام نشد.")).finally(() => setLoading(false)) }, [])
   return <AdminShell title="مشتریان" description="اطلاعات مشتریان و ارتباط بهتر با جامعه HARMENDECOR."><section className="admin-card"><div className="admin-section-head"><div><h2 className="admin-section-title">فهرست مشتریان</h2><p className="admin-section-note">اطلاعات تماس از سیستم اصلی فروشگاه خوانده می‌شود.</p></div></div>{loading ? <div className="admin-loading">در حال دریافت مشتریان…</div> : error ? <div className="admin-error">{error}</div> : customers.length === 0 ? <div className="admin-empty">هنوز مشتری‌ای ثبت نشده است.</div> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>نام</th><th>ایمیل</th><th>تلفن</th><th>عضویت</th></tr></thead><tbody>{customers.map((c) => <tr key={c.id}><td><strong>{[c.first_name, c.last_name].filter(Boolean).join(" ") || "مشتری بدون نام"}</strong></td><td dir="ltr" style={{ textAlign: "right" }}>{c.email || "—"}</td><td dir="ltr" style={{ textAlign: "right" }}>{c.phone || "—"}</td><td className="admin-muted">{c.created_at ? new Date(c.created_at).toLocaleDateString("fa-IR") : "—"}</td></tr>)}</tbody></table></div>}</section></AdminShell> }

@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import AdminShell from "@modules/admin/components/admin-shell"
-import { adminSdk, toman } from "@modules/admin/lib/sdk"
+import AdminShell from "../../../modules/admin/components/admin-shell"
+import { adminSdk, toman } from "../../../modules/admin/lib/sdk"
 
 type Order = { id: string; display_id?: number; total?: number; payment_status?: string; created_at?: string; email?: string }
 

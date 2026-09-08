@@ -1,7 +1,7 @@
 import { getBaseURL } from "@lib/util/env"
 import { getLocale } from "@lib/data/locale-actions"
 import { Metadata } from "next"
-import "styles/globals.css"
+import "../styles/globals.css"
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),

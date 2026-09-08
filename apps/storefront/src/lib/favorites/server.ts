@@ -3,7 +3,9 @@ import "server-only"
 import { getAuthHeaders } from "@lib/data/cookies"
 
 const backendUrl = (
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
+  process.env.MEDUSA_BACKEND_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ||
+  "http://localhost:9000"
 ).replace(/\/$/, "")
 
 function backendHeaders(extra?: HeadersInit) {

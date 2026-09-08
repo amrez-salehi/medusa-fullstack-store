@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import AdminShell from "@modules/admin/components/admin-shell"
-import { adminSdk, toman } from "@modules/admin/lib/sdk"
-import AdminIcon from "@modules/admin/components/admin-icon"
+import AdminShell from "../../modules/admin/components/admin-shell"
+import { adminSdk, toman } from "../../modules/admin/lib/sdk"
+import AdminIcon from "../../modules/admin/components/admin-icon"
 
 type AdminOrder = {
   id: string
